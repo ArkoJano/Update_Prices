@@ -82,26 +82,29 @@ class DBConnector:
 
     def make_excel_file(self):
 
-    
+        df = pd.read_sql("SELECT * FROM product", self.db)
 
-        cursor = self.db.cursor(dictionary=True)
+        df.to_excel("product_.xlsx")
+        print(type(df))
 
-        cursor.execute("SELECT * FROM product")
-        records = cursor.fetchall()
+        # cursor = self.db.cursor(dictionary=True)
 
-        dataframe = pd.DataFrame(data=records)
-        print(dataframe['ProductID'])
-        for i in range(len(dataframe['UnitPrice'])):
-            dataframe = dataframe.replace(to_replace=dataframe['UnitPrice'][i], value=Decimal(dataframe['UnitPrice'][i]))
+        # cursor.execute("SELECT * FROM product")
+        # records = cursor.fetchall()
+
+        # dataframe = pd.DataFrame(data=records)
+        # print(dataframe['ProductID'])
+        # for i in range(len(dataframe['UnitPrice'])):
+        #     dataframe = dataframe.replace(to_replace=dataframe['UnitPrice'][i], value=Decimal(dataframe['UnitPrice'][i]))
         
-        # for col_name in dataframe:
-        #     print(dataframe['UnitPrice'])
-        # dataframe['UnitPrice'] = Decimal(dataframe['UnitPrice'])
+        # # for col_name in dataframe:
+        # #     print(dataframe['UnitPrice'])
+        # # dataframe['UnitPrice'] = Decimal(dataframe['UnitPrice'])
         
 
-        dataframe.to_excel("product.xlsx")
+        # dataframe.to_excel("product.xlsx")
 
-        cursor.close()
+        # cursor.close()
 
 
 class NBPConnector():
