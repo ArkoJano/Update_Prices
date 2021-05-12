@@ -7,17 +7,26 @@ import logging
 import pandas as pd
 
 
+
 USER_NAME   = 'root'
 PASSWORD    = '1234'
 HOST        = 'localhost'
 DATABASE    = 'mydb'
 EXCEL_FILE  = 'product.xlsx'
 
+# basicConfig calego moduli generujacego logi
 logging.basicConfig(filename="log.log", level=logging.INFO, datefmt='%d-%m-%y %H:%M:%S',
         format="%(asctime)s: %(levelname)s: %(message)s"
         )
 
 class DBConnector:
+
+    '''
+    Klasa odpowiedzialna za caly proces polaczenia
+    sie z baza danych, pobraniu z niej wartosci i 
+    ich aktualizacji.
+    '''
+
     def __init__(self,user_name, passwd, host, dbname):
         self.user_name = user_name
         self.passwd    = passwd
@@ -28,6 +37,12 @@ class DBConnector:
 
 
     def connect_to_db(self):
+        '''
+        Metoda odpowiada za podlaczenie sie z odpowiednia
+        baza danych. Jesli sie to nie powiedzie to skrypt
+        zakonczy swoje dzialanie i zapisze odpowiedni
+        log error do pliku log.log.
+        '''
 
         try:
             self.db = mysql.connector.connect(
@@ -51,24 +66,22 @@ class DBConnector:
         self.db.close()
         logging.info(f"Closed connnection with {self.host}:{self.dbname}")
 
-    def get_all_products(self):
-        UnitPrice = 6
-        cursor = self.db.cursor()
-        query = 'SELECT * FROM product'
-        cursor.execute(query)
-        logging.info(f"Executed SQL query: {query}")
-        records = cursor.fetchall()
-        
-        cursor.close()
-
-        return records
 
     def update_USD_price(self, currency):
+
+        '''
+        Metoda przyjmuje jako argument aktualny kurs USD
+        i na jego podstawie aktualizuje wartosci w kolumnie
+        UnitPriceUSD
+        '''
 
         UnitPrice = 6
         cursor = self.db.cursor()
     
-        records = self.get_all_products()
+        query = 'SELECT * FROM product'
+        cursor.execute(query)
+        logging.info(f"Executed SQL query: {query}")
+        records = cursor.fetchall()
 
         for row in records:
             query = f"""UPDATE product SET UnitPriceUSD = {Decimal(currency)*row[UnitPrice]}
@@ -80,11 +93,21 @@ class DBConnector:
         cursor.close()
 
     def update_Euro_price(self, currency):
+
+        '''
+        Metoda przyjmuje jako argument aktualny kurs Euro
+        i na jego podstawie aktualizuje wartosci w kolumnie
+        UnitPriceEuro
+        '''
+
         UnitPrice = 6
 
         cursor = self.db.cursor()
         
-        records = self.get_all_products()
+        query = 'SELECT * FROM product'
+        cursor.execute(query)
+        logging.info(f"Executed SQL query: {query}")
+        records = cursor.fetchall()
 
         for row in records:
             
@@ -96,7 +119,16 @@ class DBConnector:
         logging.info(f"Updated UnitPriceEuro collumn in {self.dbname} in table: product")
         cursor.close()
 
+
     def make_excel_file(self):
+
+        '''
+        Metoda wykorzystuje modul pandas do wyslania
+        zapytania do bazy danych i pobrania wszystkich
+        wartosci tabeli 'product', ustawienia ich w 
+        odpowiedniej kolejnosci i stworzeniu pliku .xlsx
+        o nazwie zdefiniowanej w stalej EXCEL_FILE
+        '''
 
         
         df = pd.read_sql("SELECT * FROM product", self.db, index_col='ProductID')
@@ -114,6 +146,11 @@ class DBConnector:
 
 
 class NBPConnector():
+    '''
+    Klasa odpowiedzialna za caly proces laczenia
+    sie z API NBP i pobieranie z niego odpowiednich
+    wartosci.
+    '''
 
     def __init__(self):
         self.api_base_url = 'http://api.nbp.pl/api/'
@@ -124,84 +161,15 @@ class NBPConnector():
         self.today = 'today'
 
     logging.info("Created new NBPConnector")
-   
-
-    def get_updated_currency_USD(self):
-
-        usd = 'usd/'
-        endpoint_today = f"{self.api_base_url}{self.exchange_rates}{self.tableA}{usd}"
-        endpoint = f"{self.api_base_url}{self.exchange_rates}{self.tableA}{usd}"
-
-        status_code = 0
-
-        try:
-            r = requests.get(endpoint_today)
-            logging.info(f"Sended get request: {endpoint_today}")
-            if r.status_code == 404:
-                    r.raise_for_status()
-        except HTTPError as err:
-            status_code = err.response.status_code
-            logging.error(f"Can't get today's USD exchange rate because: {status_code}")
-
-        # jesli nie udalo sie pobrac "dzisiejszego" kursu
-        # sprobuj pobrac ostatni 
-        if status_code == 404:
-            try:
-                r = requests.get(endpoint)
-                logging.info(f"Sended get request: {endpoint}")
-                if r.status_code == 404:
-                    r.raise_for_status()
-            except HTTPError as err:
-                status_code = err.response.status_code
-                logging.error(f"Can't get last USD exchange rate because: {status_code}")
-                return None
-
-        logging.info(f"Recived the current USD exchange rate from the NBP API")
-        data = r.json()
-        
-
-        usd_currency = data['rates'][0]['mid']
-        return usd_currency
-        
-
-    def get_updated_currency_Euro(self):
-        euro = 'eur/'
-        endpoint_today = f"{self.api_base_url}{self.exchange_rates}{self.tableA}{euro}{self.today}"
-        endpoint = f"{self.api_base_url}{self.exchange_rates}{self.tableA}{euro}"
-        
-        status_code = 0
-        
-        try:
-            r = requests.get(endpoint_today)
-            logging.info(f"Sended get request: {endpoint_today}")
-            if r.status_code == 404:
-                    r.raise_for_status()
-        except HTTPError as err:
-            status_code = err.response.status_code
-            logging.error(f"Can't get today's Euro exchange rate because: {status_code}")
-
-        # jesli nie udalo sie pobrac "dzisiejszego" kursu
-        # sprobuj pobrac ostatni 
-        if status_code == 404:
-            try:
-                r = requests.get(endpoint)
-                logging.info(f"Sended get request: {endpoint}")
-                if r.status_code == 404:
-                    r.raise_for_status()
-            except HTTPError as err:
-                status_code = err.response.status_code
-                logging.error(f"Can't get last Euro exchange rate because: {status_code}")
-                return None
-                
-
-        logging.info(f"Recived the current Euro exchange rate from the NBP API")
-        data = r.json()
-
-        euro_currency = data['rates'][0]['mid']
-        return euro_currency
-        
+     
 
     def get_updated_currency_by_code(self, currency_code):
+
+        """
+        Metoda przyjmuje kod w standardzie ISO 4217 i jesli
+        taka waluta jest dostepna w bazie NBP to zostanie
+        zwrocony jej aktualny kurs.
+        """
             
         endpoint_today = f"{self.api_base_url}{self.exchange_rates}{self.tableA}{currency_code}{self.today}"
         endpoint = f"{self.api_base_url}{self.exchange_rates}{self.tableA}{currency_code}"
@@ -210,7 +178,7 @@ class NBPConnector():
         
         try:
             r = requests.get(endpoint_today)
-            logging.info(f"Sended get request: {endpoint_today}")
+            logging.info(f"Send get request: {endpoint_today}")
             if r.status_code == 404:
                     r.raise_for_status()
         except HTTPError as err:
@@ -228,6 +196,9 @@ class NBPConnector():
             except HTTPError as err:
                 status_code = err.response.status_code
                 logging.error(f"Can't get last {currency_code} exchange rate because: {status_code}")
+                
+                # jesli sie nie udalo pobrac ostatniego, zakoncz dzialanie metody
+                # i zapisz log error
                 return None
                 
 
@@ -246,17 +217,16 @@ db.connect_to_db()
 
 
 nbp = NBPConnector()
-#usd_currency = nbp.get_updated_currency_USD()
-# euro_currency = nbp.get_updated_currency_Euro()
+
 
 usd_currency = nbp.get_updated_currency_by_code('usd')
 euro_currency = nbp.get_updated_currency_by_code('eur')
 
 
-# db.update_Euro_price(euro_currency)
-# db.update_USD_price(usd_currency)
+db.update_Euro_price(euro_currency)
+db.update_USD_price(usd_currency)
 
-# db.make_excel_file()
+db.make_excel_file()
 
 
 
