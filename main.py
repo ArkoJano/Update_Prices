@@ -12,10 +12,12 @@ USER_NAME   = 'root'
 PASSWORD    = '1234'
 HOST        = 'localhost'
 DATABASE    = 'mydb'
+
 EXCEL_FILE  = 'product.xlsx'
+LOG_FILE    = "log.log"
 
 # basicConfig calego moduli generujacego logi
-logging.basicConfig(filename="log.log", level=logging.INFO, datefmt='%d-%m-%y %H:%M:%S',
+logging.basicConfig(filename=LOG_FILE, level=logging.INFO, datefmt='%d-%m-%y %H:%M:%S',
         format="%(asctime)s: %(levelname)s: %(message)s"
         )
 
@@ -190,7 +192,7 @@ class NBPConnector():
         if status_code == 404:
             try:
                 r = requests.get(endpoint)
-                logging.info(f"Sended get request: {endpoint}")
+                logging.info(f"Send get request: {endpoint}")
                 if r.status_code == 404:
                     r.raise_for_status()
             except HTTPError as err:
@@ -214,20 +216,14 @@ db = DBConnector(USER_NAME, PASSWORD, HOST, DATABASE)
 
 db.connect_to_db()
 
-
-
 nbp = NBPConnector()
-
 
 usd_currency = nbp.get_updated_currency_by_code('usd')
 euro_currency = nbp.get_updated_currency_by_code('eur')
-
 
 db.update_Euro_price(euro_currency)
 db.update_USD_price(usd_currency)
 
 db.make_excel_file()
-
-
 
 db.close_connection()
